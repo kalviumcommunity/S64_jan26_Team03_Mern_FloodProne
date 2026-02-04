@@ -4,12 +4,12 @@ import prisma from "@/lib/prisma";
 import { sendSuccess, sendError } from "@/lib/responseHandler";
 import { ERROR_CODES } from "@/lib/errorCodes";
 import { userSchema } from "@/lib/schemas";
+import { handleError } from "@/lib/errorHandler";
 
 export async function GET(request: Request) {
   try {
     // Middleware verifies token and sets headers.
     // We can rely on x-user-id header if needed, or just proceed.
-    // const userId = request.headers.get("x-user-id");
 
     const { searchParams } = new URL(request.url);
     const page = Number(searchParams.get("page")) || 1;
@@ -48,13 +48,7 @@ export async function GET(request: Request) {
       "Users fetched successfully"
     );
   } catch (error) {
-    console.error("Error fetching users:", error);
-    return sendError(
-      "Failed to fetch users",
-      ERROR_CODES.DATABASE_FAILURE,
-      500,
-      error
-    );
+    return handleError(error, "GET /api/users");
   }
 }
 
@@ -97,12 +91,6 @@ export async function POST(request: Request) {
     
     return sendSuccess(user, "User created successfully", 201);
   } catch (error) {
-    console.error("Error creating user:", error);
-    return sendError(
-      "Failed to create user",
-      ERROR_CODES.DATABASE_FAILURE,
-      500,
-      error
-    );
+    return handleError(error, "POST /api/users");
   }
 }
