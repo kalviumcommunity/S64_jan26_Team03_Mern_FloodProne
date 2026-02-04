@@ -18,7 +18,57 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.---
+
+## API Documentation
+
+FloodGuard provides a set of RESTful API routes under `/api/` for managing locations, users, and alerts.
+
+### **Locations API**
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/locations` | List all monitored districts (with summary stats). |
+| `POST` | `/api/locations` | Add a new district. |
+| `GET` | `/api/locations/:id` | Get details of a specific district (includes active alerts). |
+| `PATCH` | `/api/locations/:id` | Update district details (e.g., risk level). |
+| `DELETE` | `/api/locations/:id` | Remove a district. |
+
+**Example POST /api/locations:**
+```bash
+curl -X POST http://localhost:3000/api/locations \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Jaipur","latitude":26.9124,"longitude":75.7873,"riskLevel":"SAFE"}'
+```
+
+### **Alerts API**
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/alerts?locationId=1` | Get alerts. Filter by `locationId` or `active=true`. |
+| `POST` | `/api/alerts` | Create a new alert (System or Admin). |
+| `DELETE` | `/api/alerts/:id` | Remove/Resolve an alert. |
+
+**Example POST /api/alerts:**
+```bash
+curl -X POST http://localhost:3000/api/alerts \
+  -H "Content-Type: application/json" \
+  -d '{"type":"HEAVY_RAIN","message":"Heavy rainfall > 50mm","severity":"WARNING","locationId":1}'
+```
+
+### **Users API**
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/users?page=1&limit=10` | List users with pagination. |
+| `POST` | `/api/users` | Register a new user. |
+| `GET` | `/api/users/:id` | Get user profile. |
+
+### **Weather API**
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/weather?lat=...&lon=...` | Fetch current weather and forecast (Source: Open-Meteo). |
+
+---
+
+## Screenshotsre
 
 ## Learn More
 
