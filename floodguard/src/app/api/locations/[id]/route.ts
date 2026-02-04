@@ -2,11 +2,14 @@
 import prisma from "@/lib/prisma";
 import { sendSuccess, sendError } from "@/lib/responseHandler";
 import { ERROR_CODES } from "@/lib/errorCodes";
+import { locationUpdateSchema } from "@/lib/schemas";
+
 
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  // ... (GET remains same)
   try {
     const { id: idStr } = await params;
     const id = Number(idStr);
@@ -51,21 +54,26 @@ export async function PATCH(
   try {
     const { id: idStr } = await params;
     const id = Number(idStr);
-    const body = await request.json();
-    const { name, latitude, longitude, riskLevel } = body;
 
     if (isNaN(id)) {
       return sendError("Invalid ID", ERROR_CODES.VALIDATION_ERROR, 400);
     }
+    
+    const body = await request.json();
+    const result = locationUpdateSchema.safeParse(body);
+
+    if (!result.success) {
+      return sendError(
+        "Validation failed",
+        ERROR_CODES.VALIDATION_ERROR,
+        400,
+        result.error.issues.map((e) => ({ field: e.path[0], message: e.message }))
+      );
+    }
 
     const location = await prisma.location.update({
       where: { id },
-      data: {
-        name,
-        latitude,
-        longitude,
-        riskLevel,
-      },
+      data: result.data,
     });
 
     return sendSuccess(location, "Location updated successfully");

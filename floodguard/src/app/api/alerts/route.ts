@@ -3,8 +3,11 @@ import prisma from "@/lib/prisma";
 import { AlertType, Severity } from "@prisma/client";
 import { sendSuccess, sendError } from "@/lib/responseHandler";
 import { ERROR_CODES } from "@/lib/errorCodes";
+import { alertSchema } from "@/lib/schemas";
+
 
 export async function GET(request: Request) {
+  // ... (GET remains same)
   const { searchParams } = new URL(request.url);
   const locationId = searchParams.get("locationId");
   const activeOnly = searchParams.get("active") === "true";
@@ -34,31 +37,19 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { type, message, severity, locationId } = body;
+    const result = alertSchema.safeParse(body);
 
-    if (!type || !message || !locationId) {
+    if (!result.success) {
       return sendError(
-        "Type, message, and locationId are required",
+        "Validation failed",
         ERROR_CODES.VALIDATION_ERROR,
-        400
+        400,
+        result.error.issues.map((e) => ({ field: e.path[0], message: e.message }))
       );
     }
 
-    // Validate enums
-    if (!Object.values(AlertType).includes(type)) {
-      return sendError("Invalid alert type", ERROR_CODES.VALIDATION_ERROR, 400);
-    }
-    if (severity && !Object.values(Severity).includes(severity)) {
-      return sendError("Invalid severity", ERROR_CODES.VALIDATION_ERROR, 400);
-    }
-
     const alert = await prisma.alert.create({
-      data: {
-        type,
-        message,
-        severity: severity || Severity.INFO,
-        locationId: Number(locationId),
-      },
+      data: result.data,
     });
 
     return sendSuccess(alert, "Alert created successfully", 201);
