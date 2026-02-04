@@ -68,7 +68,30 @@ curl -X POST http://localhost:3000/api/alerts \
 
 ---
 
-## Screenshotsre
+
+## Error Handling
+The application uses a centralized error handling mechanism to ensure consistent response formatting and secure logging.
+
+### Utilities
+- **Logger** (`src/lib/logger.ts`): Structured JSON logger for `info`, `warn`, and `error` levels.
+- **Error Handler** (`src/lib/errorHandler.ts`):
+  - Catches errors from API routes.
+  - Logs detailed stack traces internally (via Logger).
+  - Returns a user-friendly message in **Production** (hides stack traces).
+  - Returns full error details in **Development** for easier debugging.
+
+### Response Format
+All errors follow this JSON structure:
+```json
+{
+  "success": false,
+  "message": "Error description",
+  "error": { ... }, // Optional details
+  "timestamp": "ISO Date"
+}
+```
+
+## Screenshots
 
 ## Learn More
 
