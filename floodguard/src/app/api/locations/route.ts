@@ -1,7 +1,8 @@
-
+import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { sendSuccess, sendError } from "@/lib/responseHandler";
 import { ERROR_CODES } from "@/lib/errorCodes";
+import { locationSchema } from "@/lib/schemas";
 
 export async function GET() {
   try {
@@ -28,29 +29,24 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { name, latitude, longitude, riskLevel } = body;
+    const result = locationSchema.safeParse(body);
 
-    if (!name || latitude === undefined || longitude === undefined) {
+    if (!result.success) {
       return sendError(
-        "Name, latitude, and longitude are required",
+        "Validation failed",
         ERROR_CODES.VALIDATION_ERROR,
-        400
+        400,
+        result.error.issues.map((e) => ({ field: e.path[0], message: e.message }))
       );
     }
 
     const location = await prisma.location.create({
-      data: {
-        name,
-        latitude,
-        longitude,
-        riskLevel,
-      },
+      data: result.data,
     });
 
     return sendSuccess(location, "Location created successfully", 201);
-  } catch (error) {
-    // Check for unique constraint violation
-    if ((error as any).code === "P2002") {
+  } catch (error: any) {
+    if (error.code === "P2002") {
        return sendError(
         "Location with this name already exists",
         ERROR_CODES.VALIDATION_ERROR,
@@ -62,7 +58,7 @@ export async function POST(request: Request) {
       "Failed to create location",
       ERROR_CODES.DATABASE_FAILURE,
       500,
-      error
+      { message: error.message, stack: error.stack }
     );
   }
 }

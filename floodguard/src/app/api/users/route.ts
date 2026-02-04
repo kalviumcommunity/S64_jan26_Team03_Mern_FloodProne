@@ -1,7 +1,8 @@
-
+import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { sendSuccess, sendError } from "@/lib/responseHandler";
 import { ERROR_CODES } from "@/lib/errorCodes";
+import { userSchema } from "@/lib/schemas";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -46,21 +47,22 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { email, name, locationId } = body;
+    const result = userSchema.safeParse(body);
 
-    if (!email) {
+    if (!result.success) {
       return sendError(
-        "Email is required",
+        "Validation failed",
         ERROR_CODES.VALIDATION_ERROR,
-        400
+        400,
+        result.error.issues.map((e) => ({ field: e.path[0], message: e.message }))
       );
     }
 
     const user = await prisma.user.create({
       data: {
-        email,
-        name,
-        locationId: locationId ? Number(locationId) : undefined,
+        email: result.data.email,
+        name: result.data.name,
+        locationId: result.data.locationId,
       },
     });
 
