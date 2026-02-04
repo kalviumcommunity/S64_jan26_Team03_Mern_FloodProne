@@ -55,10 +55,12 @@ echo "$INV_LOC" | grep -q "Name must be at least 2 characters long" || echo "❌
 echo "$INV_LOC" | grep -q "Latitude must be between -90 and 90" || echo "❌ Missing Lat Error"
 
 # 2. Users
-echo "Creating User..."
+# 2. Users (via Admin/Public Route - assuming this still works but requires password)
+echo "Creating User (via POST /api/users)..."
+# Note: Password is now required by schema
 USER_RES=$(curl -s -X POST $BASE_URL/users \
   -H "Content-Type: application/json" \
-  -d "{\"email\":\"testuser${SUFFIX}@example.com\",\"name\":\"Test User\",\"locationId\":$LOC_ID}")
+  -d "{\"email\":\"testuser${SUFFIX}@example.com\",\"name\":\"Test User\",\"password\":\"password123\",\"locationId\":$LOC_ID}")
 check_success "$USER_RES"
 USER_ID=$(echo $USER_RES | grep -o '"id":[0-9]*' | head -1 | awk -F: '{print $2}')
 echo "User ID: $USER_ID"
@@ -66,7 +68,7 @@ echo "User ID: $USER_ID"
 echo "Creating Invalid User (Validation Test)..."
 INV_USER=$(curl -s -X POST $BASE_URL/users \
   -H "Content-Type: application/json" \
-  -d "{\"email\":\"not-an-email\",\"name\":\"A\"}")
+  -d "{\"email\":\"not-an-email\",\"name\":\"A\",\"password\":\"123\"}")
 echo "Response: $INV_USER"
 check_failure "$INV_USER"
 echo "$INV_USER" | grep -q "Invalid email address" || echo "❌ Missing Email Error"
@@ -84,9 +86,6 @@ INV_ALERT=$(curl -s -X POST $BASE_URL/alerts \
   -d "{\"type\":\"INVALID_TYPE\",\"message\":\"Hi\"}")
 echo "Response: $INV_ALERT"
 check_failure "$INV_ALERT"
-# Note: Zod returns "Invalid input" or similar for nativeEnum if value is invalid string.
-# But if it's undefined (missing key), it says Required.
-# With "INVALID_TYPE", it should be caught by z.nativeEnum validation.
 echo "$INV_ALERT" | grep -q "Invalid option" || echo "❌ Missing Type Error"
 
 # 4. PATCH Validation Tests
@@ -106,7 +105,47 @@ echo "Response: $INV_LOC_UPD"
 check_failure "$INV_LOC_UPD"
 echo "$INV_LOC_UPD" | grep -q "Latitude must be" || echo "❌ Missing Latitude Update Error"
 
-# 5. Weather
+# 5. Authentication Flow
+echo "Testing Authentication..."
+
+# Signup
+echo "Signing up new user..."
+SIGNUP_EMAIL="authuser${SUFFIX}@example.com"
+SIGNUP_RES=$(curl -s -X POST $BASE_URL/auth/signup \
+  -H "Content-Type: application/json" \
+  -d "{\"email\":\"$SIGNUP_EMAIL\",\"name\":\"Auth User\",\"password\":\"securepass\",\"locationId\":$LOC_ID}")
+check_success "$SIGNUP_RES"
+
+# Login
+echo "Logging in..."
+LOGIN_RES=$(curl -s -X POST $BASE_URL/auth/login \
+  -H "Content-Type: application/json" \
+  -d "{\"email\":\"$SIGNUP_EMAIL\",\"password\":\"securepass\"}")
+check_success "$LOGIN_RES"
+
+# Extract Token
+TOKEN=$(echo $LOGIN_RES | grep -o '"token":"[^"]*"' | sed 's/"token":"//;s/"//')
+echo "Token: ${TOKEN:0:20}..."
+
+if [ -z "$TOKEN" ]; then
+  echo "❌ Failed to extract token"
+  exit 1
+fi
+
+# Protected Route (GET /api/users) - Success
+echo "Accessing Protected Route (with token)..."
+PROTECTED_RES=$(curl -s -X GET $BASE_URL/users \
+  -H "Authorization: Bearer $TOKEN")
+check_success "$PROTECTED_RES"
+
+# Protected Route (GET /api/users) - Failure
+echo "Accessing Protected Route (without token)..."
+UNAUTH_RES=$(curl -s -X GET $BASE_URL/users)
+echo "Response: $UNAUTH_RES"
+check_failure "$UNAUTH_RES"
+echo "$UNAUTH_RES" | grep -q "Token missing" || echo "❌ Expected 'Token missing' error"
+
+# 6. Weather
 echo "Fetching Weather..."
 WEATHER_RES=$(curl -s "$BASE_URL/weather?lat=26.9124&lon=75.7873")
 check_success "$WEATHER_RES"
