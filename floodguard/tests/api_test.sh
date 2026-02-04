@@ -55,10 +55,9 @@ echo "$INV_LOC" | grep -q "Name must be at least 2 characters long" || echo "❌
 echo "$INV_LOC" | grep -q "Latitude must be between -90 and 90" || echo "❌ Missing Lat Error"
 
 # 2. Users
-# 2. Users (via Admin/Public Route - assuming this still works but requires password)
-echo "Creating User (via POST /api/users)..."
-# Note: Password is now required by schema
-USER_RES=$(curl -s -X POST $BASE_URL/users \
+# 2. Users (via Public Signup - POST /api/auth/signup)
+echo "Creating User (via POST /api/auth/signup)..."
+USER_RES=$(curl -s -X POST $BASE_URL/auth/signup \
   -H "Content-Type: application/json" \
   -d "{\"email\":\"testuser${SUFFIX}@example.com\",\"name\":\"Test User\",\"password\":\"password123\",\"locationId\":$LOC_ID}")
 check_success "$USER_RES"
@@ -66,7 +65,7 @@ USER_ID=$(echo $USER_RES | grep -o '"id":[0-9]*' | head -1 | awk -F: '{print $2}
 echo "User ID: $USER_ID"
 
 echo "Creating Invalid User (Validation Test)..."
-INV_USER=$(curl -s -X POST $BASE_URL/users \
+INV_USER=$(curl -s -X POST $BASE_URL/auth/signup \
   -H "Content-Type: application/json" \
   -d "{\"email\":\"not-an-email\",\"name\":\"A\",\"password\":\"123\"}")
 echo "Response: $INV_USER"
@@ -88,27 +87,11 @@ echo "Response: $INV_ALERT"
 check_failure "$INV_ALERT"
 echo "$INV_ALERT" | grep -q "Invalid option" || echo "❌ Missing Type Error"
 
-# 4. PATCH Validation Tests
-echo "Updating User with Invalid Data..."
-INV_USER_UPD=$(curl -s -X PATCH $BASE_URL/users/$USER_ID \
-  -H "Content-Type: application/json" \
-  -d '{"email":"bad-email"}')
-echo "Response: $INV_USER_UPD"
-check_failure "$INV_USER_UPD"
-echo "$INV_USER_UPD" | grep -q "Invalid email address" || echo "❌ Missing Email Update Error"
 
-echo "Updating Location with Invalid Data..."
-INV_LOC_UPD=$(curl -s -X PATCH $BASE_URL/locations/$LOC_ID \
-  -H "Content-Type: application/json" \
-  -d '{"latitude": 200}')
-echo "Response: $INV_LOC_UPD"
-check_failure "$INV_LOC_UPD"
-echo "$INV_LOC_UPD" | grep -q "Latitude must be" || echo "❌ Missing Latitude Update Error"
+# 5. Authentication & Middleware (RBAC)
+echo "Testing Authentication & RBAC..."
 
-# 5. Authentication Flow
-echo "Testing Authentication..."
-
-# Signup
+# Signup (Regular User)
 echo "Signing up new user..."
 SIGNUP_EMAIL="authuser${SUFFIX}@example.com"
 SIGNUP_RES=$(curl -s -X POST $BASE_URL/auth/signup \
@@ -132,18 +115,54 @@ if [ -z "$TOKEN" ]; then
   exit 1
 fi
 
-# Protected Route (GET /api/users) - Success
-echo "Accessing Protected Route (with token)..."
+# 4. PATCH Validation Tests (Authenticated)
+echo "Updating User with Invalid Data..."
+INV_USER_UPD=$(curl -s -X PATCH $BASE_URL/users/$USER_ID \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{"email":"bad-email"}')
+echo "Response: $INV_USER_UPD"
+check_failure "$INV_USER_UPD"
+echo "$INV_USER_UPD" | grep -q "Invalid email address" || echo "❌ Missing Email Update Error"
+
+echo "Updating Location with Invalid Data..."
+INV_LOC_UPD=$(curl -s -X PATCH $BASE_URL/locations/$LOC_ID \
+  -H "Content-Type: application/json" \
+  -d '{"latitude": 200}')
+echo "Response: $INV_LOC_UPD"
+check_failure "$INV_LOC_UPD"
+echo "$INV_LOC_UPD" | grep -q "Latitude must be" || echo "❌ Missing Latitude Update Error"
+
+# Protected Route (GET /api/users) - Success (User Role)
+echo "Accessing Protected Route /api/users (with User token)..."
 PROTECTED_RES=$(curl -s -X GET $BASE_URL/users \
   -H "Authorization: Bearer $TOKEN")
 check_success "$PROTECTED_RES"
 
-# Protected Route (GET /api/users) - Failure
+# Admin Route (GET /api/admin) - Failure (User Role)
+echo "Accessing Admin Route /api/admin (with User token)..."
+ADMIN_RES=$(curl -s -X GET $BASE_URL/admin \
+  -H "Authorization: Bearer $TOKEN")
+echo "Response: $ADMIN_RES"
+echo "$ADMIN_RES" | grep -q "Access denied"
+if [ $? -eq 0 ]; then
+   echo "✅ Success (Access Denied for Non-Admin)"
+else
+   echo "❌ Failed: Expected Access Denied"
+   exit 1
+fi
+
+# Protected Route (GET /api/users) - Failure (No Token)
 echo "Accessing Protected Route (without token)..."
 UNAUTH_RES=$(curl -s -X GET $BASE_URL/users)
 echo "Response: $UNAUTH_RES"
-check_failure "$UNAUTH_RES"
-echo "$UNAUTH_RES" | grep -q "Token missing" || echo "❌ Expected 'Token missing' error"
+echo "$UNAUTH_RES" | grep -q "Token missing"
+if [ $? -eq 0 ]; then
+   echo "✅ Success (Token Missing)"
+else
+   echo "❌ Failed: Expected Token Missing Error"
+   exit 1
+fi
 
 # 6. Weather
 echo "Fetching Weather..."
