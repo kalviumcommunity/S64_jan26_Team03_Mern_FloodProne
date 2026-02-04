@@ -1,4 +1,6 @@
-import { NextResponse } from "next/server";
+
+import { sendSuccess, sendError } from "@/lib/responseHandler";
+import { ERROR_CODES } from "@/lib/errorCodes";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -6,9 +8,10 @@ export async function GET(request: Request) {
   const lon = searchParams.get("lon");
 
   if (!lat || !lon) {
-    return NextResponse.json(
-      { error: "Latitude and Longitude are required" },
-      { status: 400 },
+    return sendError(
+      "Latitude and Longitude are required",
+      ERROR_CODES.VALIDATION_ERROR,
+      400
     );
   }
 
@@ -22,12 +25,14 @@ export async function GET(request: Request) {
     }
 
     const data = await response.json();
-    return NextResponse.json(data);
+    return sendSuccess(data, "Weather data fetched successfully");
   } catch (error) {
     console.error("Error fetching weather:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch weather data" },
-      { status: 500 },
+    return sendError(
+      "Failed to fetch weather data",
+      ERROR_CODES.EXTERNAL_API_ERROR,
+      500,
+      error
     );
   }
 }

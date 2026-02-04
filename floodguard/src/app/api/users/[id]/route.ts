@@ -1,5 +1,7 @@
-import { NextResponse } from "next/server";
+
 import prisma from "@/lib/prisma";
+import { sendSuccess, sendError } from "@/lib/responseHandler";
+import { ERROR_CODES } from "@/lib/errorCodes";
 
 export async function GET(
   request: Request,
@@ -10,7 +12,7 @@ export async function GET(
     const id = Number(idStr);
 
     if (isNaN(id)) {
-      return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
+      return sendError("Invalid ID", ERROR_CODES.VALIDATION_ERROR, 400);
     }
 
     const user = await prisma.user.findUnique({
@@ -19,13 +21,18 @@ export async function GET(
     });
 
     if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+      return sendError("User not found", ERROR_CODES.NOT_FOUND, 404);
     }
 
-    return NextResponse.json(user);
+    return sendSuccess(user, "User fetched successfully");
   } catch (error) {
     console.error("Error fetching user:", error);
-    return NextResponse.json({ error: "Failed to fetch user" }, { status: 500 });
+    return sendError(
+      "Failed to fetch user",
+      ERROR_CODES.INTERNAL_ERROR,
+      500,
+      error
+    );
   }
 }
 
@@ -40,7 +47,7 @@ export async function PATCH(
     const { name, role, locationId } = body;
 
     if (isNaN(id)) {
-      return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
+      return sendError("Invalid ID", ERROR_CODES.VALIDATION_ERROR, 400);
     }
 
     const user = await prisma.user.update({
@@ -52,10 +59,15 @@ export async function PATCH(
       },
     });
 
-    return NextResponse.json(user);
+    return sendSuccess(user, "User updated successfully");
   } catch (error) {
     console.error("Error updating user:", error);
-    return NextResponse.json({ error: "Failed to update user" }, { status: 500 });
+    return sendError(
+      "Failed to update user",
+      ERROR_CODES.DATABASE_FAILURE,
+      500,
+      error
+    );
   }
 }
 
@@ -68,16 +80,21 @@ export async function DELETE(
     const id = Number(idStr);
 
     if (isNaN(id)) {
-      return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
+      return sendError("Invalid ID", ERROR_CODES.VALIDATION_ERROR, 400);
     }
 
     await prisma.user.delete({
       where: { id },
     });
 
-    return NextResponse.json({ message: "User deleted" });
+    return sendSuccess(null, "User deleted successfully");
   } catch (error) {
     console.error("Error deleting user:", error);
-    return NextResponse.json({ error: "Failed to delete user" }, { status: 500 });
+    return sendError(
+      "Failed to delete user",
+      ERROR_CODES.DATABASE_FAILURE,
+      500,
+      error
+    );
   }
 }

@@ -1,5 +1,7 @@
-import { NextResponse } from "next/server";
+
 import prisma from "@/lib/prisma";
+import { sendSuccess, sendError } from "@/lib/responseHandler";
+import { ERROR_CODES } from "@/lib/errorCodes";
 
 export async function GET(
   request: Request,
@@ -10,7 +12,7 @@ export async function GET(
     const id = Number(idStr);
 
     if (isNaN(id)) {
-      return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
+      return sendError("Invalid ID", ERROR_CODES.VALIDATION_ERROR, 400);
     }
 
     const alert = await prisma.alert.findUnique({
@@ -19,15 +21,17 @@ export async function GET(
     });
 
     if (!alert) {
-      return NextResponse.json({ error: "Alert not found" }, { status: 404 });
+      return sendError("Alert not found", ERROR_CODES.NOT_FOUND, 404);
     }
 
-    return NextResponse.json(alert);
+    return sendSuccess(alert, "Alert fetched successfully");
   } catch (error) {
     console.error("Error fetching alert:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch alert" },
-      { status: 500 },
+    return sendError(
+      "Failed to fetch alert",
+      ERROR_CODES.INTERNAL_ERROR,
+      500,
+      error
     );
   }
 }
@@ -41,7 +45,7 @@ export async function DELETE(
     const id = Number(idStr);
 
     if (isNaN(id)) {
-      return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
+      return sendError("Invalid ID", ERROR_CODES.VALIDATION_ERROR, 400);
     }
 
     // Hard delete or Soft delete? Using hard delete for now as per schema
@@ -49,12 +53,14 @@ export async function DELETE(
       where: { id },
     });
 
-    return NextResponse.json({ message: "Alert deleted" });
+    return sendSuccess(null, "Alert deleted successfully");
   } catch (error) {
     console.error("Error deleting alert:", error);
-    return NextResponse.json(
-      { error: "Failed to delete alert" },
-      { status: 500 },
+    return sendError(
+      "Failed to delete alert",
+      ERROR_CODES.DATABASE_FAILURE,
+      500,
+      error
     );
   }
 }
