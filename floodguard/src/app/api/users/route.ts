@@ -1,5 +1,7 @@
-import { NextResponse } from "next/server";
+
 import prisma from "@/lib/prisma";
+import { sendSuccess, sendError } from "@/lib/responseHandler";
+import { ERROR_CODES } from "@/lib/errorCodes";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -18,20 +20,25 @@ export async function GET(request: Request) {
       prisma.user.count(),
     ]);
 
-    return NextResponse.json({
-      data: users,
-      meta: {
-        total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit),
+    return sendSuccess(
+      {
+        users,
+        meta: {
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit),
+        },
       },
-    });
+      "Users fetched successfully"
+    );
   } catch (error) {
     console.error("Error fetching users:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch users" },
-      { status: 500 },
+    return sendError(
+      "Failed to fetch users",
+      ERROR_CODES.DATABASE_FAILURE,
+      500,
+      error
     );
   }
 }
@@ -42,7 +49,11 @@ export async function POST(request: Request) {
     const { email, name, locationId } = body;
 
     if (!email) {
-      return NextResponse.json({ error: "Email is required" }, { status: 400 });
+      return sendError(
+        "Email is required",
+        ERROR_CODES.VALIDATION_ERROR,
+        400
+      );
     }
 
     const user = await prisma.user.create({
@@ -53,12 +64,14 @@ export async function POST(request: Request) {
       },
     });
 
-    return NextResponse.json(user, { status: 201 });
+    return sendSuccess(user, "User created successfully", 201);
   } catch (error) {
     console.error("Error creating user:", error);
-    return NextResponse.json(
-      { error: "Failed to create user" },
-      { status: 500 },
+    return sendError(
+      "Failed to create user",
+      ERROR_CODES.DATABASE_FAILURE,
+      500,
+      error
     );
   }
 }

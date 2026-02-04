@@ -1,6 +1,8 @@
-import { NextResponse } from "next/server";
+
 import prisma from "@/lib/prisma";
 import { AlertType, Severity } from "@prisma/client";
+import { sendSuccess, sendError } from "@/lib/responseHandler";
+import { ERROR_CODES } from "@/lib/errorCodes";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -17,12 +19,14 @@ export async function GET(request: Request) {
       orderBy: { createdAt: "desc" },
       include: { location: true },
     });
-    return NextResponse.json(alerts);
+    return sendSuccess(alerts, "Alerts fetched successfully");
   } catch (error) {
     console.error("Error fetching alerts:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch alerts" },
-      { status: 500 },
+    return sendError(
+      "Failed to fetch alerts",
+      ERROR_CODES.DATABASE_FAILURE,
+      500,
+      error
     );
   }
 }
@@ -33,18 +37,19 @@ export async function POST(request: Request) {
     const { type, message, severity, locationId } = body;
 
     if (!type || !message || !locationId) {
-      return NextResponse.json(
-        { error: "Type, message, and locationId are required" },
-        { status: 400 },
+      return sendError(
+        "Type, message, and locationId are required",
+        ERROR_CODES.VALIDATION_ERROR,
+        400
       );
     }
 
     // Validate enums
     if (!Object.values(AlertType).includes(type)) {
-      return NextResponse.json({ error: "Invalid alert type" }, { status: 400 });
+      return sendError("Invalid alert type", ERROR_CODES.VALIDATION_ERROR, 400);
     }
     if (severity && !Object.values(Severity).includes(severity)) {
-      return NextResponse.json({ error: "Invalid severity" }, { status: 400 });
+      return sendError("Invalid severity", ERROR_CODES.VALIDATION_ERROR, 400);
     }
 
     const alert = await prisma.alert.create({
@@ -56,12 +61,14 @@ export async function POST(request: Request) {
       },
     });
 
-    return NextResponse.json(alert, { status: 201 });
+    return sendSuccess(alert, "Alert created successfully", 201);
   } catch (error) {
     console.error("Error creating alert:", error);
-    return NextResponse.json(
-      { error: "Failed to create alert" },
-      { status: 500 },
+    return sendError(
+      "Failed to create alert",
+      ERROR_CODES.DATABASE_FAILURE,
+      500,
+      error
     );
   }
 }

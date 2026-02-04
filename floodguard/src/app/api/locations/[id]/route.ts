@@ -1,5 +1,7 @@
-import { NextResponse } from "next/server";
+
 import prisma from "@/lib/prisma";
+import { sendSuccess, sendError } from "@/lib/responseHandler";
+import { ERROR_CODES } from "@/lib/errorCodes";
 
 export async function GET(
   request: Request,
@@ -10,7 +12,7 @@ export async function GET(
     const id = Number(idStr);
 
     if (isNaN(id)) {
-      return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
+      return sendError("Invalid ID", ERROR_CODES.VALIDATION_ERROR, 400);
     }
 
     const location = await prisma.location.findUnique({
@@ -27,15 +29,17 @@ export async function GET(
     });
 
     if (!location) {
-      return NextResponse.json({ error: "Location not found" }, { status: 404 });
+      return sendError("Location not found", ERROR_CODES.NOT_FOUND, 404);
     }
 
-    return NextResponse.json(location);
+    return sendSuccess(location, "Location fetched successfully");
   } catch (error) {
     console.error("Error fetching location:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch location" },
-      { status: 500 },
+    return sendError(
+      "Failed to fetch location",
+      ERROR_CODES.INTERNAL_ERROR,
+      500,
+      error
     );
   }
 }
@@ -51,7 +55,7 @@ export async function PATCH(
     const { name, latitude, longitude, riskLevel } = body;
 
     if (isNaN(id)) {
-      return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
+      return sendError("Invalid ID", ERROR_CODES.VALIDATION_ERROR, 400);
     }
 
     const location = await prisma.location.update({
@@ -64,12 +68,14 @@ export async function PATCH(
       },
     });
 
-    return NextResponse.json(location);
+    return sendSuccess(location, "Location updated successfully");
   } catch (error) {
     console.error("Error updating location:", error);
-    return NextResponse.json(
-      { error: "Failed to update location" },
-      { status: 500 },
+    return sendError(
+      "Failed to update location",
+      ERROR_CODES.DATABASE_FAILURE,
+      500,
+      error
     );
   }
 }
@@ -83,24 +89,21 @@ export async function DELETE(
     const id = Number(idStr);
 
     if (isNaN(id)) {
-      return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
+      return sendError("Invalid ID", ERROR_CODES.VALIDATION_ERROR, 400);
     }
 
-    // Be careful deleting locations with users/alerts. 
-    // Usually we would check or cascade. Prisma might fail if not cascaded properly manually if relation constraints exist.
-    // Schema has implicit relations, usually defaults restricts.
-    // But let's assume simple delete for now or wrap in try-catch.
-    
     await prisma.location.delete({
       where: { id },
     });
 
-    return NextResponse.json({ message: "Location deleted" });
+    return sendSuccess(null, "Location deleted successfully");
   } catch (error) {
     console.error("Error deleting location:", error);
-    return NextResponse.json(
-      { error: "Failed to delete location (ensure no related data exists)" },
-      { status: 500 },
+    return sendError(
+      "Failed to delete location",
+      ERROR_CODES.DATABASE_FAILURE,
+      500,
+      error
     );
   }
 }
