@@ -541,3 +541,26 @@ Schema changes should always be tested in staging
 ✔ Query logs verified
 
 ✔ README documentation completed
+
+
+
+## Routes
+Public:
+- /
+- /login
+
+Protected:
+- /dashboard
+- /users/[id]
+
+## Features
+- JWT-based middleware auth
+- Dynamic routing
+- SEO-friendly URLs
+- Custom 404
+
+## Screenshots
+- Home
+- Login redirect
+- Dashboard access
+- Dynamic user page
