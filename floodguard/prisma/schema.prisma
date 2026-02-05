@@ -15,15 +15,34 @@ model User {
   role      Role     @default(USER)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  
+
   // Optional: User can be subscribed to a location
   locationId Int?
   location   Location? @relation(fields: [locationId], references: [id])
+
+  // 🔹 Files uploaded by user
+  files      File[]
+}
+
+model File {
+  id        Int      @id @default(autoincrement())
+  name      String
+  type      String
+  size      Int
+  path      String
+
+  createdAt DateTime @default(now())
+
+  // 🔹 Relation to User
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model Location {
   id          Int      @id @default(autoincrement())
-  name        String   @unique // e.g., "Jaipur", "Mumbai"
+  name        String   @unique
   latitude    Float
   longitude   Float
   riskLevel   RiskLevel @default(SAFE)
@@ -42,7 +61,7 @@ model Alert {
   severity    Severity @default(INFO)
   active      Boolean  @default(true)
   createdAt   DateTime @default(now())
-  
+
   locationId  Int
   location    Location @relation(fields: [locationId], references: [id])
 }
@@ -50,10 +69,10 @@ model Alert {
 model WeatherLog {
   id          Int      @id @default(autoincrement())
   temperature Float?
-  rainfall    Float?   // in mm
-  waterLevel  Float?   // in meters
+  rainfall    Float?
+  waterLevel  Float?
   recordedAt  DateTime @default(now())
-  
+
   locationId  Int
   location    Location @relation(fields: [locationId], references: [id])
 
@@ -84,4 +103,3 @@ enum Severity {
   MODERATE
   CRITICAL
 }
-
