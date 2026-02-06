@@ -1,5 +1,6 @@
+import { AuthProvider } from "@/context/AuthContext";
+import { UIProvider } from "@/context/UIContext";
 import "./globals.css";
-import { LayoutWrapper } from "@/components";
 
 export default function RootLayout({
   children,
@@ -9,7 +10,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <LayoutWrapper>{children}</LayoutWrapper>
+        <AuthProvider>
+          <UIProvider>{children}</UIProvider>
+        </AuthProvider>
       </body>
     </html>
   );

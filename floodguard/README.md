@@ -588,3 +588,17 @@ LayoutWrapper
 
 ## Reflection
 Modular architecture reduces duplication, improves DX, and scales well in large apps.
+
+
+
+Include:
+
+Purpose of each context
+
+How custom hooks improve reusability
+
+State flow diagrams
+
+Logs/screenshots of state changes
+
+Performance considerations and pitfalls
