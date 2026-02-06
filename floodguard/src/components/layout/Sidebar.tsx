@@ -1,0 +1,28 @@
+"use client";
+import Link from "next/link";
+
+const links = [
+  { href: "/dashboard", label: "Overview" },
+  { href: "/users", label: "Users" },
+  { href: "/settings", label: "Settings" },
+];
+
+export default function Sidebar() {
+  return (
+    <aside className="w-64 bg-gray-100 border-r p-4">
+      <h2 className="font-bold mb-4">Menu</h2>
+      <ul className="space-y-2">
+        {links.map(link => (
+          <li key={link.href}>
+            <Link
+              href={link.href}
+              className="text-gray-700 hover:text-blue-600"
+            >
+              {link.label}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </aside>
+  );
+}
