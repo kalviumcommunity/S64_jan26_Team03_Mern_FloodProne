@@ -8,7 +8,9 @@ import Modal from "@/components/ui/Modal";
 import Loader from "@/components/ui/Loader";
 
 export default function UsersPage() {
-  const { data, error, isLoading } = useSWR("/api/users?page=1&limit=10", fetcher);
+  const { data, error, isLoading } = useSWR("/api/users?page=1&limit=10", fetcher, {
+    suspense: true,
+  });
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState<any>(null);
   const [isDeleting, setIsDeleting] = useState(false);
